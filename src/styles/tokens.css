@@ -1,0 +1,169 @@
+/* ─── Default: Dark Theme ──────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  /* Gradients */
+  --gradient-page: linear-gradient(145deg, #1E1A2D 0%, #12131C 40%, #0A0A0F 100%);
+  
+  /* Glass effects */
+  --glass-bg:        rgba(19, 20, 28, 0.6);
+  --glass-border:    rgba(255, 255, 255, 0.06);
+  --glass-card-bg:   rgba(26, 27, 38, 0.75);
+  --glass-card-edge: rgba(255, 255, 255, 0.07);
+  --glass-btn-bg:    rgba(255, 255, 255, 0.05);
+  --glass-btn-hover: rgba(255, 255, 255, 0.09);
+  --glass-shadow:    0 4px 24px rgba(0, 0, 0, 0.4);
+  
+  /* Scrollbars */
+  --scrollbar-thumb:       rgba(255, 255, 255, 0.08);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.15);
+
+  /* Backgrounds */
+  --color-bg-page:     #0D0E14;
+  --color-bg-surface:  #13141C;
+  --color-bg-elevated: #1A1B26;
+  --color-bg-hover:    #1F2133;
+
+  /* Borders */
+  --color-border:        #2A2B3D;
+  --color-border-active: #3D3E58;
+
+  /* Accents */
+  --color-mint:     #7AFFA1;
+  --color-yellow:   #FFF87C;
+  --color-lavender: #DDCBF5;
+  --color-peach:    #FFA27D;
+
+  /* Accent tints (10–12% opacity) */
+  --color-mint-tint:     rgba(122, 255, 161, 0.12);
+  --color-yellow-tint:   rgba(255, 248, 124, 0.10);
+  --color-lavender-tint: rgba(221, 203, 245, 0.10);
+  --color-peach-tint:    rgba(255, 162, 125, 0.10);
+
+  /* Text */
+  --color-text-primary:   #F0F0F8;
+  --color-text-secondary: #9A9AB8;
+  --color-text-tertiary:  #5A5A78;
+
+  /* Radii */
+  --radius-xs:   6px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+}
+
+/* ─── Light Theme — Premium Lavender + White ────────────────── */
+[data-theme="light"] {
+  /* Page gradient: deep lavender top-left → soft lavender → pure white */
+  --gradient-page: linear-gradient(
+    145deg,
+    #EAE4F8 0%,
+    #F3F0FC 30%,
+    #F9F8FF 60%,
+    #FFFFFF 100%
+  );
+
+  /* Glass effects — frosted white with lavender shimmer */
+  --glass-bg:        rgba(255, 255, 255, 0.72);
+  --glass-border:    rgba(167, 139, 250, 0.20);
+  --glass-card-bg:   rgba(255, 255, 255, 0.90);
+  --glass-card-edge: rgba(196, 181, 253, 0.30);
+  --glass-btn-bg:    rgba(124, 58, 237, 0.05);
+  --glass-btn-hover: rgba(124, 58, 237, 0.10);
+  --glass-shadow:    0 4px 24px rgba(109, 75, 193, 0.10), 0 1px 4px rgba(109, 75, 193, 0.06);
+
+  /* Scrollbars */
+  --scrollbar-thumb:       rgba(139, 107, 184, 0.20);
+  --scrollbar-thumb-hover: rgba(139, 107, 184, 0.38);
+
+  /* Backgrounds — soft lavender wash */
+  --color-bg-page:     #EDE8F8;
+  --color-bg-surface:  #FFFFFF;
+  --color-bg-elevated: #E8E2F5;
+  --color-bg-hover:    #DDD6F0;
+
+  /* Borders — lavender-tinted, elegant */
+  --color-border:        rgba(167, 139, 250, 0.28);
+  --color-border-active: rgba(124, 58, 237, 0.45);
+
+  /* Accents — deeper for legibility on light bg */
+  --color-mint:     #059669;
+  --color-yellow:   #D97706;
+  --color-lavender: #6D28D9;
+  --color-peach:    #DC4F2A;
+
+  /* Accent tints — pastel washes */
+  --color-mint-tint:     rgba(5, 150, 105, 0.10);
+  --color-yellow-tint:   rgba(217, 119, 6, 0.10);
+  --color-lavender-tint: rgba(109, 40, 217, 0.08);
+  --color-peach-tint:    rgba(220, 79, 42, 0.09);
+
+  /* Text — deep purple-tinted blacks for premium feel */
+  --color-text-primary:   #1A0F33;
+  --color-text-secondary: #4A3A70;
+  --color-text-tertiary:  #9585C0;
+
+  /* Radii */
+  --radius-xs:   6px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-full: 9999px;
+}
+
+/* ─── Warm Theme ───────────────────────────────────────────── */
+[data-theme="warm"] {
+  /* Gradients */
+  --gradient-page: linear-gradient(145deg, #1A1612 0%, #13100D 100%);
+  
+  /* Glass effects */
+  --glass-bg:        rgba(28, 24, 19, 0.6);
+  --glass-border:    rgba(255, 255, 255, 0.04);
+  --glass-card-bg:   rgba(36, 32, 26, 0.75);
+  --glass-card-edge: rgba(255, 255, 255, 0.05);
+  --glass-btn-bg:    rgba(255, 255, 255, 0.03);
+  --glass-btn-hover: rgba(255, 255, 255, 0.07);
+  --glass-shadow:    0 4px 24px rgba(0, 0, 0, 0.5);
+  
+  /* Scrollbars */
+  --scrollbar-thumb:       rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.1);
+
+  /* Backgrounds — warm brown/amber tones */
+  --color-bg-page:     #13100D;
+  --color-bg-surface:  #1C1813;
+  --color-bg-elevated: #24201A;
+  --color-bg-hover:    #2C2720;
+
+  /* Borders */
+  --color-border:        #3A3228;
+  --color-border-active: #56483A;
+
+  /* Accents — warm palette */
+  --color-mint:     #7AFFA1;
+  --color-yellow:   #FFC947;
+  --color-lavender: #E8B4F5;
+  --color-warm-accent: #FFD452;
+
+  /* --- Frosted Palette (TV Dashboard) --- */
+  --frost-dark: #28353E;
+  --frost-muted: #45576D;
+  --frost-slate: #778B96;
+  --frost-light: #AAC7D5;
+  --frost-sky: #DFEBF7;
+  --frost-white: #E7E7E7;
+
+  /* --- Brand & Theme --- */
+
+  --color-mint-tint:     rgba(122, 255, 161, 0.12);
+  --color-yellow-tint:   rgba(255, 201, 71, 0.12);
+  --color-lavender-tint: rgba(232, 180, 245, 0.10);
+  --color-peach-tint:    rgba(255, 138, 92, 0.12);
+
+  /* Text */
+  --color-text-primary:   #F5EFE0;
+  --color-text-secondary: #A89880;
+  --color-text-tertiary:  #6A5A48;
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en" data-theme="dark" style="background:#0D0E14">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>flow</title>
+    <!-- Theme bootstrap: runs synchronously before React to prevent flash -->
+    <script>
+      (function () {
+        var saved = localStorage.getItem('theme');
+        var valid = ['dark', 'light', 'warm'];
+        var theme = valid.includes(saved) ? saved : 'dark';
+        var bg = { dark: '#0D0E14', light: '#F4F5FA', warm: '#13100D' };
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.background = bg[theme];
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
