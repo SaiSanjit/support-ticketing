@@ -356,7 +356,7 @@ a {
 .browse-row {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 24px;
 }
 
 .row-header {
@@ -732,7 +732,7 @@ a {
 .page-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 24px;
   min-width: 0;
 }
 
@@ -1015,10 +1015,10 @@ a {
   grid-auto-columns: var(--rail-column);
   gap: 48px; /* TV Design Kit guideline */
   overflow-x: auto;
-  padding-top: 40px;
-  padding-bottom: 48px;
-  margin-top: -40px;
-  margin-bottom: -48px;
+  padding-top: 32px;
+  padding-bottom: 32px;
+  margin-top: 0;
+  margin-bottom: 0;
   scroll-snap-type: x proximity;
 }
 
@@ -1092,7 +1092,7 @@ a {
 
 .tv-ticket-card__id {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-muted);
   letter-spacing: 0.06em;
 }
@@ -1107,7 +1107,7 @@ a {
 }
 
 .tv-ticket-card__title {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
   font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -1135,7 +1135,7 @@ a {
   align-items: center;
   gap: 6px;
   margin-top: 12px;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-muted);
   min-width: 0;
 }
@@ -1168,7 +1168,7 @@ a {
   align-items: center;
   gap: 6px;
   margin-top: 8px;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-muted);
   flex-wrap: wrap;
 }
@@ -1211,7 +1211,7 @@ a {
 }
 
 .tv-ticket-card__client {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -1222,7 +1222,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   white-space: nowrap;
   flex-shrink: 0;
@@ -1241,6 +1241,7 @@ a {
 .tickets-canvas {
   position: relative;
   isolation: isolate;
+  padding-bottom: 80px; /* Space at end of scroll */
 }
 
 .tickets-canvas::before {
@@ -1260,6 +1261,8 @@ a {
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .ott-lane-title {
@@ -1719,6 +1722,7 @@ a {
   min-height: 340px;
   border-radius: 32px;
   overflow: hidden;
+  margin-bottom: 48px;
   /* Dark base — matches TV/dark aesthetic regardless of theme */
   color: #f4f4f2;
 }
