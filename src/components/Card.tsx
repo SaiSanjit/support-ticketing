@@ -1,7 +1,8 @@
+import { AlertCircle, AlertTriangle, Briefcase, CheckCircle2, Clock, Timer } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { Ticket } from '../data/tickets'
 import Avatar from './Avatar'
-import { getPriorityClass, getPriorityRank, getStatusIcon, priorityMeta } from './cardUtils'
+import { getPriorityClass, getPriorityRank, priorityMeta } from './cardUtils'
 
 interface TicketCardProps {
   ticket: Ticket
@@ -13,6 +14,8 @@ interface TicketCardProps {
 
 export function TicketCard({ ticket, onFocus, onClick, focused, compact }: TicketCardProps) {
   const meta = priorityMeta[ticket.priority]
+  const isResolved = ticket.priority === 'Resolved'
+  const isEscalated = ticket.status === 'Escalated'
 
   return (
     <div
@@ -35,35 +38,57 @@ export function TicketCard({ ticket, onFocus, onClick, focused, compact }: Ticke
       {/* Top row: ID + priority badge */}
       <div className="tv-ticket-card__header">
         <span className="tv-ticket-card__id">{ticket.id}</span>
-        <span className={`badge-base ${getPriorityClass(ticket.priority)}`}>
-          {meta.rank}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {isEscalated && (
+            <AlertCircle size={13} style={{ color: 'var(--status-critical)', opacity: 0.85 }} />
+          )}
+          <span className={`badge-base ${getPriorityClass(ticket.priority)}`}>
+            {meta.rank}
+          </span>
+        </div>
       </div>
 
-      {/* Title — large and legible from distance */}
+      {/* Title only — description lives in the immersive hero */}
       <div className="tv-ticket-card__body">
         <h3 className="tv-ticket-card__title">{ticket.title}</h3>
-        <p className="tv-ticket-card__desc">{ticket.description}</p>
       </div>
 
-      {/* Meta row: region + time */}
-      <div className="tv-ticket-card__meta">
+      {/* Project + Category row */}
+      <div className="tv-ticket-card__project">
+        <Briefcase size={11} style={{ opacity: 0.5, flexShrink: 0 }} />
+        <span className="tv-ticket-card__project-name">{ticket.projectName}</span>
+        <span className="tv-ticket-card__dot">·</span>
+        <span className="tv-ticket-card__category">{ticket.category}</span>
+      </div>
+
+      {/* SLA row */}
+      <div className={`tv-ticket-card__sla${ticket.slaBreached ? ' tv-ticket-card__sla--breached' : ''}`}>
+        {ticket.slaBreached
+          ? <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+          : isResolved
+            ? <CheckCircle2 size={11} style={{ flexShrink: 0 }} />
+            : <Timer size={11} style={{ flexShrink: 0 }} />
+        }
+        <span>{ticket.sla}</span>
+        <span className="tv-ticket-card__dot">·</span>
         <span>{ticket.region}</span>
-        <span>·</span>
+        <span className="tv-ticket-card__dot">·</span>
         <span>{ticket.timeAgo}</span>
       </div>
 
       {/* Footer: assignee + status */}
       <div className="tv-ticket-card__footer">
         <div className="tv-ticket-card__assignee">
-          <Avatar name={ticket.assignee} size={compact ? 28 : 32} />
+          <Avatar name={ticket.assignee} size={compact ? 28 : 30} />
           <div className="tv-ticket-card__assignee-info">
             <div className="tv-ticket-card__assignee-name">{ticket.assignee}</div>
             <div className="tv-ticket-card__client">{ticket.client}</div>
           </div>
         </div>
-        <div className="tv-ticket-card__status">
-          {getStatusIcon(ticket.status)}
+        <div className={`tv-ticket-card__status${ticket.status === 'Escalated' ? ' tv-ticket-card__status--escalated' : ticket.status === 'Resolved' ? ' tv-ticket-card__status--resolved' : ''}`}>
+          {ticket.status === 'Escalated' && <AlertCircle size={12} />}
+          {ticket.status === 'In Progress' && <Clock size={12} />}
+          {ticket.status === 'Resolved' && <CheckCircle2 size={12} />}
           <span>{ticket.status}</span>
         </div>
       </div>
