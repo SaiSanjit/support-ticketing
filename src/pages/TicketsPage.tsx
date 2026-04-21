@@ -206,13 +206,13 @@ export default function TicketsPage() {
           </div>
         </div>
 
-        {/* Right column: assignee + stats tiles */}
+        {/* Right column: 4 focused data tiles */}
         <div className="tkt-hero__right">
           {/* Assignee tile */}
           <div className="tkt-stat-tile">
             <div className="tkt-stat-tile__label">Assigned Owner</div>
             <div className="tkt-stat-tile__assignee">
-              <Avatar name={focused.assignee} size={48} />
+              <Avatar name={focused.assignee} size={36} />
               <div>
                 <div className="tkt-stat-tile__name">{focused.assignee}</div>
                 <div className="tkt-stat-tile__sub">{focused.client}</div>
@@ -220,18 +220,38 @@ export default function TicketsPage() {
             </div>
           </div>
 
-          {/* Category tile */}
-          <div className="tkt-stat-tile">
-            <div className="tkt-stat-tile__label">Category</div>
-            <div className="tkt-stat-tile__big">{focused.category}</div>
-            <div className="tkt-stat-tile__sub">{focused.projectName}</div>
+          {/* Affected users + SLA row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="tkt-stat-tile">
+              <div className="tkt-stat-tile__label">Affected</div>
+              <div className="tkt-stat-tile__number"
+                style={{ color: focused.affectedUsers > 500 ? '#ef7868' : undefined }}>
+                {focused.affectedUsers.toLocaleString()}
+              </div>
+              <div className="tkt-stat-tile__sub">users</div>
+            </div>
+            <div className="tkt-stat-tile">
+              <div className="tkt-stat-tile__label">SLA</div>
+              <div className="tkt-stat-tile__number"
+                style={{ color: focused.slaBreached ? '#ef7868' : '#6db48c', fontSize: '1rem', letterSpacing: 0 }}>
+                {focused.slaBreached ? 'Breached' : 'On Track'}
+              </div>
+              <div className="tkt-stat-tile__sub">{focused.sla}</div>
+            </div>
           </div>
 
-          {/* Volume tile */}
-          <div className="tkt-stat-tile">
-            <div className="tkt-stat-tile__label">Filtered Volume</div>
-            <div className="tkt-stat-tile__number">{filteredTickets.length}</div>
-            <div className="tkt-stat-tile__sub">Tickets in current view</div>
+          {/* Category + Volume row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="tkt-stat-tile">
+              <div className="tkt-stat-tile__label">Category</div>
+              <div className="tkt-stat-tile__big">{focused.category}</div>
+              <div className="tkt-stat-tile__sub">{focused.region}</div>
+            </div>
+            <div className="tkt-stat-tile">
+              <div className="tkt-stat-tile__label">Queue</div>
+              <div className="tkt-stat-tile__number">{filteredTickets.length}</div>
+              <div className="tkt-stat-tile__sub">tickets</div>
+            </div>
           </div>
         </div>
       </section>
@@ -243,10 +263,16 @@ export default function TicketsPage() {
         <div className="tkt-filter-bar">
           <div className="tkt-filter-bar__left">
             <div className="section-header">
-              <div>
-                <h2>Queue Lanes</h2>
-                <p>Flip filters to scan the backlog from across the room.</p>
-              </div>
+              <span style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+              }}>
+                Queue Lanes
+              </span>
             </div>
           </div>
           <div className="tkt-filter-bar__right">
@@ -285,9 +311,6 @@ export default function TicketsPage() {
                   style={{ color: lane.color }}
                 >
                   {group.priority} Queue
-                </div>
-                <div className="ott-lane-subtitle">
-                  Active tickets sorted into the {group.priority.toLowerCase()} priority lane.
                 </div>
               </div>
               <div

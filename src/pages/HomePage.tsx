@@ -1,14 +1,29 @@
-import { Activity, ArrowRight, CheckCircle2, Clock3, Layers3, Shield, Ticket, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BarChart2,
+  Clock,
+  Ticket,
+  TrendingUp,
+  Users,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { KpiCard, TicketCard } from '../components/Card'
-import Avatar from '../components/Avatar'
-import ClientCard from '../components/ClientCard'
 import { clients } from '../data/clients'
 import { team } from '../data/team'
-import { tickets, urgentTickets } from '../data/tickets'
+import { tickets } from '../data/tickets'
 
-const throughputTrend = [
+// ─── Colour tokens ───────────────────────────────────────────────────────────
+const C = {
+  critical: '#EF7868',
+  high:     '#E4A85E',
+  medium:   '#7B9FB6',
+  resolved: '#6DB48C',
+  escalated:'#C85A9A',
+}
+
+// ─── 7-day throughput data ────────────────────────────────────────────────────
+const throughput = [
   { label: 'Mon', opened: 12, resolved: 7 },
   { label: 'Tue', opened: 16, resolved: 10 },
   { label: 'Wed', opened: 14, resolved: 11 },
@@ -18,468 +33,609 @@ const throughputTrend = [
   { label: 'Sun', opened: 15, resolved: 12 },
 ]
 
-function buildLinePath(values: number[], width: number, height: number, maxValue: number) {
-  return values
-    .map((value, index) => {
-      const x = (index / (values.length - 1)) * width
-      const y = height - (value / maxValue) * height
-      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
-    })
-    .join(' ')
+// ─── SVG path helpers ────────────────────────────────────────────────────────
+function linePath(vals: number[], W: number, H: number, max: number) {
+  return vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * W
+    const y = H - (v / max) * (H - 4)
+    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+  }).join(' ')
 }
-
-function buildAreaPath(values: number[], width: number, height: number, maxValue: number) {
-  const line = values.map((value, index) => {
-    const x = (index / (values.length - 1)) * width
-    const y = height - (value / maxValue) * height
-    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+function areaPath(vals: number[], W: number, H: number, max: number) {
+  const pts = vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * W
+    const y = H - (v / max) * (H - 4)
+    return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
   })
-
-  return `${line.join(' ')} L ${width} ${height} L 0 ${height} Z`
+  return `${pts.join(' ')} L ${W} ${H} L 0 ${H} Z`
 }
 
-function buildConicGradient(segments: Array<{ color: string; value: number }>) {
-  const total = segments.reduce((sum, segment) => sum + segment.value, 0)
-
-  if (!total) {
-    return 'conic-gradient(var(--surface-soft) 0deg 360deg)'
-  }
-
-  let start = 0
-
-  return `conic-gradient(${segments
-    .map((segment) => {
-      const end = start + (segment.value / total) * 360
-      const stop = `${segment.color} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`
-      start = end
-      return stop
-    })
-    .join(', ')})`
+// ─── Avatar initials ─────────────────────────────────────────────────────────
+function av(name: string) {
+  return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
 }
 
 export default function HomePage() {
   const navigate = useNavigate()
-  const now = new Date()
-  const [focusedClientId, setFocusedClientId] = useState(clients[0].id)
-  const openTickets = tickets.filter((ticket) => ticket.status !== 'Resolved').length
-  const resolvedToday = tickets.filter((ticket) => ticket.status === 'Resolved').length
-  const liveEscalations = tickets.filter((ticket) => ticket.status === 'Escalated').length
-  const availableEngineers = team.filter((member) => member.status === 'Available').length
-  const slaCompliance = 96
-  const avgResolutionTime = '4.2h'
-  const focusedClient = clients.find((client) => client.id === focusedClientId) ?? clients[0]
-  const focusedClientTickets = useMemo(
-    () => tickets.filter((ticket) => ticket.clientId === focusedClient.id),
-    [focusedClient.id],
+
+  // ── Core KPI derivations ─────────────────────────────────────────────────
+  const openCount      = tickets.filter(t => t.status !== 'Resolved').length
+  const criticalCount  = tickets.filter(t => t.priority === 'Critical').length
+  const slaBreached    = tickets.filter(t => t.slaBreached).length
+  const escalations    = tickets.filter(t => t.status === 'Escalated').length
+  const resolvedCount  = tickets.filter(t => t.status === 'Resolved').length
+  const avgSla         = Math.round(
+    clients.reduce((s, c) => s + parseFloat(c.slaCompliance), 0) / clients.length
   )
-  const focusedClientHero = focusedClientTickets[0] ?? urgentTickets[0]
+  const engineersOn    = team.filter(t => t.status !== 'Away').length
+  const engineersAvail = team.filter(t => t.status === 'Available').length
 
-  const priorityBreakdown = [
-    {
-      label: 'Critical',
-      count: tickets.filter((ticket) => ticket.priority === 'Critical').length,
-      color: 'var(--status-critical)',
-    },
-    {
-      label: 'High',
-      count: tickets.filter((ticket) => ticket.priority === 'High').length,
-      color: 'var(--status-high)',
-    },
-    {
-      label: 'Medium',
-      count: tickets.filter((ticket) => ticket.priority === 'Medium').length,
-      color: 'var(--status-medium)',
-    },
-    {
-      label: 'Resolved',
-      count: tickets.filter((ticket) => ticket.priority === 'Resolved').length,
-      color: 'var(--status-resolved)',
-    },
+  // ── Priority breakdown ───────────────────────────────────────────────────
+  const pBreak = [
+    { label: 'Critical', count: criticalCount,                                                   color: C.critical  },
+    { label: 'High',     count: tickets.filter(t => t.priority === 'High').length,               color: C.high      },
+    { label: 'Medium',   count: tickets.filter(t => t.priority === 'Medium').length,             color: C.medium    },
+    { label: 'Resolved', count: resolvedCount,                                                   color: C.resolved  },
   ]
+  const pTotal = pBreak.reduce((s, p) => s + p.count, 0)
 
-  const totalTickets = priorityBreakdown.reduce((sum, item) => sum + item.count, 0)
-  const donutGradient = buildConicGradient(priorityBreakdown.map((item) => ({ color: item.color, value: item.count })))
+  // ── Category breakdown ───────────────────────────────────────────────────
+  const catMap: Record<string, number> = {}
+  tickets.forEach(t => { catMap[t.category] = (catMap[t.category] ?? 0) + 1 })
+  const categories = Object.entries(catMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 7)
+  const maxCat = Math.max(...categories.map(c => c[1]))
 
-  const regionBreakdown = [...new Set(tickets.map((ticket) => ticket.region))]
-    .map((region) => ({
-      region,
-      count: tickets.filter((ticket) => ticket.region === region).length,
-    }))
-    .sort((left, right) => right.count - left.count)
-    .slice(0, 4)
+  // ── SLA per client ────────────────────────────────────────────────────────
+  const clientSla = clients.map(c => ({
+    name:  c.name,
+    sla:   parseFloat(c.slaCompliance),
+    color: parseFloat(c.slaCompliance) >= 97 ? C.resolved
+         : parseFloat(c.slaCompliance) >= 92 ? C.high
+         : C.critical,
+  }))
 
-  const clientRows = clients.map((client) => {
-    const clientTickets = tickets.filter((ticket) => ticket.clientId === client.id)
+  // ── Throughput SVG ────────────────────────────────────────────────────────
+  const W = 640, H = 130
+  const maxT = Math.max(...throughput.flatMap(p => [p.opened, p.resolved]))
+  const openedLine = linePath(throughput.map(p => p.opened), W, H, maxT)
+  const openedArea = areaPath(throughput.map(p => p.opened), W, H, maxT)
+  const resolvedLine = linePath(throughput.map(p => p.resolved), W, H, maxT)
 
-    return {
-      client,
-      totalTickets: clientTickets.length,
-      criticalTickets: clientTickets.filter((ticket) => ticket.priority === 'Critical').length,
-      mediumTickets: clientTickets.filter((ticket) => ticket.priority === 'Medium').length,
-      resolvedTickets: clientTickets.filter((ticket) => ticket.status === 'Resolved').length,
-    }
-  })
-
-  const maxRegionCount = Math.max(...regionBreakdown.map((item) => item.count), 1)
-  const maxTrendValue = Math.max(...throughputTrend.flatMap((point) => [point.opened, point.resolved]))
-  const openedValues = throughputTrend.map((point) => point.opened)
-  const resolvedValues = throughputTrend.map((point) => point.resolved)
-  const openedPath = buildLinePath(openedValues, 620, 180, maxTrendValue)
-  const openedArea = buildAreaPath(openedValues, 620, 180, maxTrendValue)
-  const resolvedPath = buildLinePath(resolvedValues, 620, 180, maxTrendValue)
-  const urgentNow = urgentTickets.slice(0, 4)
-  const busiestClient = [...clients].sort((left, right) => right.openTickets - left.openTickets)[0]
-  const refreshLabel = new Intl.DateTimeFormat(undefined, {
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(now)
+  // ── Incidents feed ────────────────────────────────────────────────────────
+  const liveIncidents = tickets
+    .filter(t => t.slaBreached || t.status === 'Escalated')
+    .sort((a, b) => (b.affectedUsers - a.affectedUsers))
+  // ── Ticket flow balance ─────────────────────────────────────────────────
+  const weekOpened   = throughput.reduce((s, p) => s + p.opened, 0)
+  const weekResolved = throughput.reduce((s, p) => s + p.resolved, 0)
+  const flowBalance  = Math.round((weekResolved / weekOpened) * 100)
 
   return (
-    <div className="page-stack">
-      <section className="immersive-board">
-        <article className="immersive-preview">
-          <div className="immersive-preview-copy">
-            <div className="immersive-kicker">
-              <Activity size={14} />
-              Live client preview
-            </div>
-            <h1 className="immersive-title">{focusedClient.name}</h1>
-            <p className="immersive-subtitle">
-              {focusedClient.industry} · {focusedClient.region} · {focusedClient.projects} active projects. Highest-pressure ticket is{' '}
-              {focusedClientHero.title}.
-            </p>
-            <div className="immersive-meta">
-              <span className="signal-pill">{focusedClient.openTickets} open tickets</span>
-              <span className="signal-pill">{focusedClient.criticalCount} critical</span>
-              <span className="signal-pill">{focusedClient.slaCompliance} SLA</span>
-              <span className="signal-pill">Refreshed {refreshLabel}</span>
-            </div>
-          </div>
+    <div className="ops-dashboard">
 
-          <div className="immersive-meta">
-            <span className="meta-pill">
-              <Layers3 size={14} />
-              {focusedClientTickets.length} tickets in portfolio
-            </span>
-            <span className="meta-pill">
-              <Clock3 size={14} />
-              Spotlight: {focusedClientHero.timeAgo}
-            </span>
-          </div>
-        </article>
+      {/* ═══════════════════════════════════════════════════════════════════
+          STATUS BAR
+      ═══════════════════════════════════════════════════════════════════ */}
+      <div className="ops-status-bar">
+        <div className="ops-status-brand">
+          <Activity size={15} />
+          Live Operations
+        </div>
+        <div className="ops-status-chips">
+          <span className="ops-chip ops-chip--alert">
+            <span className="ops-chip-dot" style={{ background: C.critical }} />
+            {criticalCount} Critical
+          </span>
+          <span className="ops-chip ops-chip--alert">
+            <span className="ops-chip-dot" style={{ background: C.escalated }} />
+            {escalations} Escalated
+          </span>
+          <span className="ops-chip ops-chip--warn">
+            <span className="ops-chip-dot" style={{ background: C.high }} />
+            {slaBreached} SLA Breached
+          </span>
+          <span className="ops-chip">
+            <span className="ops-chip-dot" style={{ background: C.resolved }} />
+            {engineersAvail}/{engineersOn} Engineers Available
+          </span>
+        </div>
+        <div className="ops-status-time">
+          {new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date())}
+        </div>
+      </div>
 
-        <div className="immersive-side">
-          <article className="summary-tile">
-            <div className="summary-label">Top incident</div>
-            <div className="summary-value">{focusedClientHero.client}</div>
-            <div className="summary-copy">{focusedClientHero.title}</div>
-          </article>
-          <article className="summary-tile">
-            <div className="summary-label">Incident owner</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
-              <Avatar name={focusedClientHero.assignee} size={46} />
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 'var(--text-lg)' }}>{focusedClientHero.assignee}</div>
-                <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>{focusedClientHero.status}</div>
+      {/* ═══════════════════════════════════════════════════════════════════
+          KPI GRID — 5 clean tiles, number-forward
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="ops-section">
+        <div className="ops-kpi-grid">
+
+          <div className="ops-kpi ops-kpi--highlight" style={{ '--kpi-accent': C.critical } as React.CSSProperties}>
+            <div className="ops-kpi-icon" style={{ background: `${C.critical}15`, color: C.critical }}>
+              <AlertTriangle size={18} />
+            </div>
+            <div className="ops-kpi-body">
+              <div className="ops-kpi-value" style={{ color: criticalCount > 0 ? C.critical : undefined }}>
+                {criticalCount}
               </div>
+              <div className="ops-kpi-label">Critical Tickets</div>
+              <div className="ops-kpi-sub">Needs immediate action</div>
             </div>
-          </article>
-          <article className="summary-tile">
-            <div className="summary-label">Average resolution</div>
-            <div className="summary-value">{avgResolutionTime}</div>
-            <div className="summary-copy">Measured across current operational tickets.</div>
-          </article>
-          <article className="summary-tile">
-            <div className="summary-label">Busiest account</div>
-            <div className="summary-value">{busiestClient.name}</div>
-            <div className="summary-copy">{busiestClient.openTickets} open tickets in queue.</div>
-          </article>
+          </div>
+
+          <div className="ops-kpi" style={{ '--kpi-accent': C.high } as React.CSSProperties}>
+            <div className="ops-kpi-icon" style={{ background: `${C.high}15`, color: C.high }}>
+              <Clock size={18} />
+            </div>
+            <div className="ops-kpi-body">
+              <div className="ops-kpi-value" style={{ color: slaBreached > 0 ? C.high : undefined }}>
+                {slaBreached}
+              </div>
+              <div className="ops-kpi-label">SLA Breached</div>
+              <div className="ops-kpi-sub">Compliance at risk</div>
+            </div>
+          </div>
+
+          <div className="ops-kpi">
+            <div className="ops-kpi-icon">
+              <Ticket size={18} />
+            </div>
+            <div className="ops-kpi-body">
+              <div className="ops-kpi-value">{openCount}</div>
+              <div className="ops-kpi-label">Open Tickets</div>
+              <div className="ops-kpi-sub">Total active backlog</div>
+            </div>
+          </div>
+
+          <div className="ops-kpi">
+            <div className="ops-kpi-icon">
+              <Users size={18} />
+            </div>
+            <div className="ops-kpi-body">
+              <div className="ops-kpi-value">{engineersAvail}<span className="ops-kpi-value-small">/{engineersOn}</span></div>
+              <div className="ops-kpi-label">Engineers Available</div>
+              <div className="ops-kpi-sub">On shift today</div>
+            </div>
+          </div>
+
+          <div className="ops-kpi">
+            <div className="ops-kpi-icon" style={{ background: 'rgba(109,180,140,0.12)', color: C.resolved }}>
+              <TrendingUp size={18} />
+            </div>
+            <div className="ops-kpi-body">
+              <div className="ops-kpi-value" style={{ color: avgSla >= 95 ? C.resolved : C.high }}>{avgSla}%</div>
+              <div className="ops-kpi-label">Avg SLA Compliance</div>
+              <div className="ops-kpi-sub">Across all clients</div>
+            </div>
+          </div>
+
         </div>
       </section>
 
-      <section className="browse-row">
-        <div className="row-header">
-          <div>
-            <div className="row-title">Clients spotlight</div>
-            <div className="row-subtitle">Focus or hover a client card to update the immersive preview, then select to open the detail screen.</div>
-          </div>
-          <div className="row-count">{clients.length} clients</div>
-        </div>
+      {/* ═══════════════════════════════════════════════════════════════════
+          ROW 1 — Throughput Chart + Priority Breakdown (number grid)
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="ops-section">
+        <div className="ops-charts-wide">
 
-        <div className="rail rail--wide">
-          {clientRows.map((row) => (
-            <ClientCard
-              key={row.client.id}
-              client={row.client}
-              totalTickets={row.totalTickets}
-              criticalTickets={row.criticalTickets}
-              mediumTickets={row.mediumTickets}
-              resolvedTickets={row.resolvedTickets}
-              active={row.client.id === focusedClient.id}
-              onFocus={() => setFocusedClientId(row.client.id)}
-              onClick={() => navigate(`/clients?client=${row.client.id}`)}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="page-section">
-        <div className="section-header">
-          <div>
-            <h2>Operations at a glance</h2>
-            <p>The overview now keeps KPI cards in a grid instead of a scroll rail.</p>
-          </div>
-        </div>
-
-        <div className="overview-kpi-grid">
-          <KpiCard label="Open tickets" value={openTickets} delta="+2 today" icon={<Ticket size={18} />} />
-          <KpiCard label="Live escalations" value={liveEscalations} icon={<Shield size={18} />} accent="var(--status-critical-soft)" />
-          <KpiCard label="Resolved today" value={resolvedToday} delta="+5 today" icon={<CheckCircle2 size={18} />} accent="var(--status-resolved-soft)" />
-          <KpiCard label="Available engineers" value={availableEngineers} icon={<Users size={18} />} />
-        </div>
-      </section>
-
-      <section className="page-section">
-        <div className="overview-visual-grid">
-          <article className="chart-card chart-card--wide">
-            <div className="chart-header">
+          {/* ── Ticket Throughput ── */}
+          <article className="ops-card ops-card--span2">
+            <div className="ops-card-header">
               <div>
-                <div className="chart-title">Weekly ticket throughput</div>
-                <div className="chart-subtitle">Opened versus resolved tickets over the last seven days.</div>
+                <div className="ops-card-title">
+                  <BarChart2 size={15} />
+                  Ticket Throughput — 7 Day
+                </div>
+                <div className="ops-card-sub">Opened vs resolved trend this week</div>
               </div>
-              <div>
-                <div className="chart-value">73%</div>
-                <div className="chart-value-caption">resolution coverage</div>
+              <div className="ops-card-kpi-pair">
+                <div>
+                  <div className="ops-card-kpi-value" style={{ color: flowBalance >= 70 ? C.resolved : C.high }}>
+                    {flowBalance}%
+                  </div>
+                  <div className="ops-card-kpi-label">Flow balance</div>
+                </div>
+                <div>
+                  <div className="ops-card-kpi-value">{weekOpened}</div>
+                  <div className="ops-card-kpi-label">Opened</div>
+                </div>
+                <div>
+                  <div className="ops-card-kpi-value" style={{ color: C.resolved }}>{weekResolved}</div>
+                  <div className="ops-card-kpi-label">Resolved</div>
+                </div>
               </div>
             </div>
 
-            <div className="trend-chart">
-              <svg viewBox="0 0 620 180" className="trend-svg" aria-label="Opened and resolved ticket trend">
-                {[30, 60, 90, 120, 150].map((y) => (
-                  <line
-                    key={y}
-                    x1="0"
-                    y1={y}
-                    x2="620"
-                    y2={y}
-                    stroke="var(--surface-border)"
-                    strokeDasharray="4 8"
-                    strokeWidth="1"
-                  />
+            <div className="ops-chart-area">
+              <svg viewBox={`0 0 ${W} ${H}`} className="ops-svg" preserveAspectRatio="none">
+                {/* Very subtle grid lines */}
+                {[H * 0.25, H * 0.5, H * 0.75].map(y => (
+                  <line key={y} x1="0" y1={y} x2={W} y2={y}
+                    stroke="currentColor" strokeOpacity="0.06" strokeWidth="1" />
                 ))}
-                <path d={openedArea} fill="var(--sky)" opacity="0.42" />
-                <path d={openedPath} fill="none" stroke="var(--primary)" strokeWidth="4" strokeLinecap="round" />
-                <path d={resolvedPath} fill="none" stroke="var(--status-resolved)" strokeWidth="4" strokeLinecap="round" />
-                {throughputTrend.map((point, index) => {
-                  const x = (index / (throughputTrend.length - 1)) * 620
-                  const openedY = 180 - (point.opened / maxTrendValue) * 180
-                  const resolvedY = 180 - (point.resolved / maxTrendValue) * 180
-
+                <defs>
+                  <linearGradient id="openGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#567C8D" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#567C8D" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d={openedArea} fill="url(#openGrad)" />
+                <path d={openedLine} fill="none" stroke="#7B9FB6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d={resolvedLine} fill="none" stroke={C.resolved} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="5 5" opacity="0.7" />
+                {throughput.map((p, i) => {
+                  const x = (i / (throughput.length - 1)) * W
+                  const oy = H - (p.opened  / maxT) * (H - 4)
+                  const ry = H - (p.resolved / maxT) * (H - 4)
                   return (
-                    <g key={point.label}>
-                      <circle cx={x} cy={openedY} r="4.5" fill="var(--primary)" />
-                      <circle cx={x} cy={resolvedY} r="4.5" fill="var(--status-resolved)" />
+                    <g key={p.label}>
+                      <circle cx={x} cy={oy} r="3.5" fill="#7B9FB6" />
+                      <circle cx={x} cy={ry} r="3.5" fill={C.resolved} opacity="0.7" />
                     </g>
                   )
                 })}
               </svg>
-
-              <div className="trend-axis">
-                {throughputTrend.map((point) => (
-                  <span key={point.label}>{point.label}</span>
-                ))}
+              <div className="ops-axis">
+                {throughput.map(p => <span key={p.label}>{p.label}</span>)}
               </div>
-
-              <div className="trend-legend">
-                <span className="legend-item">
-                  <span className="legend-dot" style={{ background: 'var(--primary)' }} />
-                  Opened
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot" style={{ background: 'var(--status-resolved)' }} />
-                  Resolved
-                </span>
+              <div className="ops-legend">
+                <span><span className="ops-legend-dot" style={{ background: '#7B9FB6' }} />Opened</span>
+                <span><span className="ops-legend-dot" style={{ background: C.resolved, opacity: 0.8 }} />Resolved</span>
               </div>
             </div>
           </article>
 
-          <article className="chart-card">
-            <div className="chart-header">
+          {/* ── Priority Breakdown — clean number grid ── */}
+          <article className="ops-card">
+            <div className="ops-card-header">
               <div>
-                <div className="chart-title">Priority mix</div>
-                <div className="chart-subtitle">Pie view of the current support queue.</div>
+                <div className="ops-card-title">Priority Breakdown</div>
+                <div className="ops-card-sub">Current queue by severity</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div className="ops-card-kpi-value" style={{ fontSize: '1.6rem' }}>{pTotal}</div>
+                <div className="ops-card-kpi-label">total</div>
               </div>
             </div>
 
-            <div className="donut-layout">
-              <div className="donut-chart" style={{ background: donutGradient }}>
-                <div className="donut-hole">
-                  <div style={{ textAlign: 'center' }}>
-                    <strong>{totalTickets}</strong>
-                    <span>total</span>
+            {/* Clean number-first list */}
+            <div className="ops-priority-list">
+              {pBreak.map(p => (
+                <div key={p.label} className="ops-priority-row">
+                  <div className="ops-priority-dot" style={{ background: p.color, opacity: 0.8 }} />
+                  <div className="ops-priority-label">{p.label}</div>
+                  <div className="ops-priority-bar-wrap">
+                    <div
+                      className="ops-priority-bar"
+                      style={{ width: `${pTotal > 0 ? (p.count / pTotal) * 100 : 0}%`, background: p.color }}
+                    />
+                  </div>
+                  <div className="ops-priority-count" style={{ color: p.count > 3 ? p.color : undefined }}>
+                    {p.count}
                   </div>
                 </div>
-              </div>
+              ))}
+            </div>
 
-              <div className="metric-list">
-                {priorityBreakdown.map((item) => (
-                  <div key={item.label} className="metric-row">
-                    <div className="metric-copy">
-                      <span className="legend-dot" style={{ background: item.color }} />
-                      <span>{item.label}</span>
+            {/* Thin stacked bar at bottom as a summary */}
+            <div className="ops-stacked-mini">
+              {pBreak.map(p => (
+                <div
+                  key={p.label}
+                  style={{ flex: p.count, background: p.color, opacity: 0.65, borderRadius: 2, height: '100%' }}
+                  title={`${p.label}: ${p.count}`}
+                />
+              ))}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          ROW 2 — Category load + Team Workload + SLA per client
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="ops-section">
+        <div className="ops-charts-trio">
+
+          {/* ── Category Breakdown — clean ranked list ── */}
+          <article className="ops-card">
+            <div className="ops-card-header">
+              <div>
+                <div className="ops-card-title">Ticket Categories</div>
+                <div className="ops-card-sub">Volume by issue type</div>
+              </div>
+            </div>
+            <div className="ops-cat-list">
+              {categories.map(([cat, count], i) => (
+                <div key={cat} className="ops-cat-row">
+                  <span className="ops-cat-rank">0{i + 1}</span>
+                  <span className="ops-cat-name">{cat}</span>
+                  <div className="ops-cat-bar-wrap">
+                    <div
+                      className="ops-cat-bar"
+                      style={{
+                        width: `${(count / maxCat) * 100}%`,
+                        background: count >= 3
+                          ? `${C.critical}90`
+                          : count >= 2
+                            ? `${C.high}90`
+                            : `${C.medium}90`,
+                      }}
+                    />
+                  </div>
+                  <span className="ops-cat-count">{count}</span>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          {/* ── Team Workload — clean person list ── */}
+          <article className="ops-card">
+            <div className="ops-card-header">
+              <div>
+                <div className="ops-card-title">Engineer Workload</div>
+                <div className="ops-card-sub">Open tickets vs resolved today</div>
+              </div>
+            </div>
+            <div className="ops-team-list">
+              {team.map(m => (
+                <div key={m.id} className="ops-team-row">
+                  <div className="ops-team-avatar">
+                    <div
+                      className="ops-team-av"
+                      style={{
+                        background: m.status === 'Available' ? 'rgba(109,180,140,0.12)'
+                                  : m.status === 'Busy'      ? 'rgba(239,120,104,0.12)'
+                                  : 'rgba(255,255,255,0.05)',
+                        color: m.status === 'Available' ? C.resolved
+                             : m.status === 'Busy'      ? C.critical
+                             : 'rgba(255,255,255,0.35)',
+                        borderColor: 'transparent',
+                      }}
+                    >
+                      {av(m.name)}
                     </div>
-                    <strong>{item.count}</strong>
+                    <div
+                      className="ops-team-status-dot"
+                      style={{
+                        background: m.status === 'Available' ? C.resolved
+                                  : m.status === 'Busy'      ? C.critical
+                                  : C.high,
+                      }}
+                    />
                   </div>
-                ))}
-              </div>
-            </div>
-          </article>
-
-          <article className="chart-card">
-            <div className="chart-header">
-              <div>
-                <div className="chart-title">Regional load</div>
-                <div className="chart-subtitle">Where active demand is concentrated right now.</div>
-              </div>
-              <div>
-                <div className="chart-value">{clients.length}</div>
-                <div className="chart-value-caption">accounts tracked</div>
-              </div>
-            </div>
-
-            <div className="bar-list">
-              {regionBreakdown.map((item) => (
-                <div key={item.region} className="bar-row">
-                  <div className="bar-header">
-                    <span>{item.region}</span>
-                    <strong>{item.count}</strong>
+                  <div className="ops-team-info">
+                    <div className="ops-team-name">{m.name.split(' ')[0]}</div>
+                    <div className="ops-team-role">{m.role}</div>
                   </div>
-                  <div className="bar-track">
-                    <div className="bar-fill" style={{ width: `${(item.count / maxRegionCount) * 100}%` }} />
+                  <div className="ops-team-stats">
+                    <div>
+                      <div className="ops-team-stat-val" style={{ color: m.openTickets > 2 ? C.high : undefined }}>
+                        {m.openTickets}
+                      </div>
+                      <div className="ops-team-stat-lbl">open</div>
+                    </div>
+                    <div>
+                      <div className="ops-team-stat-val" style={{ color: C.resolved }}>{m.resolvedToday}</div>
+                      <div className="ops-team-stat-lbl">done</div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           </article>
 
-          <article className="chart-card chart-card--wide">
-            <div className="chart-header">
+          {/* ── SLA Health per Client — number-first ── */}
+          <article className="ops-card">
+            <div className="ops-card-header">
               <div>
-                <div className="chart-title">Urgent priorities</div>
-                <div className="chart-subtitle">Critical and high-priority work that still needs attention.</div>
+                <div className="ops-card-title">SLA Health</div>
+                <div className="ops-card-sub">Per-client compliance score</div>
               </div>
-              <button className="section-action tv-focusable" onClick={() => navigate('/tickets')}>
-                Open ticket board
-                <ArrowRight size={16} />
-              </button>
+              <div style={{ textAlign: 'right' }}>
+                <div className="ops-card-kpi-value" style={{ color: avgSla >= 95 ? C.resolved : C.high, fontSize: '1.6rem' }}>
+                  {avgSla}%
+                </div>
+                <div className="ops-card-kpi-label">avg</div>
+              </div>
             </div>
-
-            <div className="overview-ticket-list">
-              {urgentNow.map((ticket) => (
-                <div key={ticket.id} className="overview-ticket-item">
-                  <Avatar name={ticket.assignee} size={38} />
-                  <div>
-                    <strong>{ticket.title}</strong>
-                    <p>
-                      {ticket.client} · {ticket.region} · {ticket.status}
-                    </p>
+            <div className="ops-sla-list">
+              {clientSla.map(c => (
+                <div key={c.name} className="ops-sla-row">
+                  <div className="ops-sla-name">{c.name}</div>
+                  <div className="ops-sla-bar-wrap">
+                    <div
+                      className="ops-sla-bar"
+                      style={{ width: `${c.sla}%`, background: c.color }}
+                    />
+                    <div className="ops-sla-target" title="95% target" />
                   </div>
-                  <div className="meta-pill" style={{ whiteSpace: 'nowrap' }}>
-                    <Clock3 size={14} />
-                    {ticket.timeAgo}
+                  <div className="ops-sla-score" style={{ color: c.sla < 92 ? C.critical : c.sla < 97 ? C.high : undefined }}>
+                    {c.sla}%
                   </div>
                 </div>
               ))}
             </div>
-          </article>
-
-          <article className="chart-card">
-            <div className="chart-header">
-              <div>
-                <div className="chart-title">Support health</div>
-                <div className="chart-subtitle">Core service metrics for the current shift.</div>
-              </div>
-            </div>
-
-            <div className="metric-list">
-              <div className="metric-row">
-                <div className="metric-copy">
-                  <span className="legend-dot" style={{ background: 'var(--status-resolved)' }} />
-                  <span>SLA compliance</span>
-                </div>
-                <strong>{slaCompliance}%</strong>
-              </div>
-              <div className="metric-row">
-                <div className="metric-copy">
-                  <span className="legend-dot" style={{ background: 'var(--primary)' }} />
-                  <span>Avg resolution time</span>
-                </div>
-                <strong>{avgResolutionTime}</strong>
-              </div>
-              <div className="metric-row">
-                <div className="metric-copy">
-                  <span className="legend-dot" style={{ background: 'var(--status-high)' }} />
-                  <span>Staff available now</span>
-                </div>
-                <strong>{availableEngineers}</strong>
-              </div>
-            </div>
-
-            <div className="bar-list">
-              <div className="bar-row">
-                <div className="bar-header">
-                  <span>SLA target</span>
-                  <strong>{slaCompliance}%</strong>
-                </div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${slaCompliance}%` }} />
-                </div>
-              </div>
-              <div className="bar-row">
-                <div className="bar-header">
-                  <span>Resolution efficiency</span>
-                  <strong>84%</strong>
-                </div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: '84%' }} />
-                </div>
-              </div>
+            <div className="ops-sla-legend">
+              <span><span className="ops-legend-dot" style={{ background: C.resolved }} />≥97%</span>
+              <span><span className="ops-legend-dot" style={{ background: C.high }} />92–96%</span>
+              <span><span className="ops-legend-dot" style={{ background: C.critical }} />At Risk</span>
             </div>
           </article>
+
         </div>
       </section>
 
-      <section className="browse-row">
-        <div className="row-header">
-          <div>
-            <div className="row-title">{focusedClient.name} queue</div>
-            <div className="row-subtitle">Tickets grouped under the currently focused client, matching the OTT browse pattern.</div>
+      {/* ═══════════════════════════════════════════════════════════════════
+          LIVE INCIDENTS FEED
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="ops-section">
+        <article className="ops-card">
+          <div className="ops-card-header">
+            <div>
+              <div className="ops-card-title">
+                <span className="ops-live-dot" />
+                Live Incidents — SLA Breached &amp; Escalated
+              </div>
+              <div className="ops-card-sub">
+                {liveIncidents.length} active incidents requiring immediate attention
+              </div>
+            </div>
+            <button className="ops-action-btn" onClick={() => navigate('/tickets')}>
+              All tickets <ArrowRight size={14} />
+            </button>
           </div>
-          <div className="row-count">{focusedClientTickets.length} tickets</div>
-        </div>
 
-        <div className="rail rail--wide">
-          {focusedClientTickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} compact />
+          <div className="ops-incident-table">
+            <div className="ops-incident-thead">
+              <span>Ticket</span>
+              <span>Client · Category</span>
+              <span>Assignee</span>
+              <span>Affected Users</span>
+              <span>Region</span>
+              <span>Status</span>
+            </div>
+            {liveIncidents.map(t => (
+              <div key={t.id} className="ops-incident-row">
+                <div>
+                  <div className="ops-incident-id">{t.id}</div>
+                  <div className="ops-incident-title">{t.title}</div>
+                </div>
+                <div>
+                  <div className="ops-incident-client">{t.client}</div>
+                  <div className="ops-incident-cat">{t.category}</div>
+                </div>
+                <div className="ops-incident-assignee">
+                  <div
+                    className="ops-av-sm"
+                    style={{ background: 'rgba(255,255,255,0.08)' }}
+                  >
+                    {av(t.assignee)}
+                  </div>
+                  <span>{t.assignee.split(' ')[0]}</span>
+                </div>
+                <div className="ops-incident-users">
+                  {t.affectedUsers > 0 ? (
+                    <span style={{ color: t.affectedUsers > 2000 ? C.critical : t.affectedUsers > 500 ? C.high : 'inherit' }}>
+                      {t.affectedUsers.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span style={{ opacity: 0.35 }}>—</span>
+                  )}
+                </div>
+                <div className="ops-incident-region">{t.region}</div>
+                <div>
+                  <span
+                    className="ops-badge"
+                    style={{
+                      background: t.slaBreached    ? `${C.critical}18`
+                                : t.status === 'Escalated' ? `${C.escalated}18`
+                                : 'rgba(255,255,255,0.06)',
+                      color: t.slaBreached    ? C.critical
+                           : t.status === 'Escalated' ? C.escalated
+                           : 'rgba(255,255,255,0.6)',
+                    }}
+                  >
+                    {t.slaBreached ? 'SLA Breached' : t.status}
+                  </span>
+                  <div className="ops-incident-sla">{t.sla}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          TEAM ON-SHIFT QUICK VIEW
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="ops-section">
+        <div className="ops-card-header" style={{ marginBottom: 16 }}>
+          <div>
+            <div className="ops-card-title" style={{ fontSize: '1rem' }}>
+              <Users size={15} /> On-Shift Team
+            </div>
+            <div className="ops-card-sub">{engineersOn} active · {engineersAvail} available for new tickets</div>
+          </div>
+          <button className="ops-action-btn" onClick={() => navigate('/team')}>
+            Full roster <ArrowRight size={14} />
+          </button>
+        </div>
+        <div className="ops-team-grid">
+          {team.map(m => (
+            <div
+              key={m.id}
+              className="ops-team-card"
+              style={{
+                borderColor: m.status === 'Available' ? `${C.resolved}33`
+                           : m.status === 'Busy'      ? `${C.critical}22`
+                           : 'var(--surface-border)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div
+                  className="ops-team-av"
+                  style={{
+                    width: 40, height: 40, fontSize: '0.78rem',
+                    background: m.status === 'Available' ? 'rgba(109,180,140,0.1)'
+                              : m.status === 'Busy'      ? 'rgba(239,120,104,0.1)'
+                              : 'rgba(255,255,255,0.05)',
+                    color: m.status === 'Available' ? C.resolved
+                         : m.status === 'Busy'      ? C.critical
+                         : 'rgba(255,255,255,0.35)',
+                    borderColor: 'transparent',
+                  }}
+                >
+                  {av(m.name)}
+                </div>
+                <div>
+                  <div className="ops-team-card-name">{m.name}</div>
+                  <div className="ops-team-card-role">{m.role}</div>
+                </div>
+                <span
+                  className="ops-badge"
+                  style={{
+                    marginLeft: 'auto',
+                    background: m.status === 'Available' ? `${C.resolved}12`
+                              : m.status === 'Busy'      ? `${C.critical}12`
+                              : 'rgba(255,255,255,0.04)',
+                    color: m.status === 'Available' ? `${C.resolved}cc`
+                         : m.status === 'Busy'      ? `${C.critical}cc`
+                         : 'rgba(255,255,255,0.35)',
+                  }}
+                >
+                  {m.status}
+                </span>
+              </div>
+              <div className="ops-team-card-metrics">
+                <div>
+                  <div className="ops-team-stat-val" style={{ fontSize: '1.3rem', color: m.openTickets > 2 ? C.high : undefined }}>
+                    {m.openTickets}
+                  </div>
+                  <div className="ops-team-stat-lbl">Open</div>
+                </div>
+                <div>
+                  <div className="ops-team-stat-val" style={{ fontSize: '1.3rem', color: C.resolved }}>{m.resolvedToday}</div>
+                  <div className="ops-team-stat-lbl">Resolved</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="ops-team-stat-lbl" style={{ marginBottom: 5 }}>{m.specialization}</div>
+                  <div style={{ height: 3, borderRadius: 2, background: 'var(--surface-soft)', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${Math.min(100, (m.openTickets / Math.max(...team.map(x => x.openTickets + x.resolvedToday), 1)) * 100)}%`,
+                      height: '100%',
+                      background: m.openTickets > 2 ? `${C.high}aa` : `${C.medium}aa`,
+                      borderRadius: 2,
+                    }} />
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       </section>
 
-      <section className="page-section">
-        <div className="section-header">
-          <div>
-            <h2>Critical cards</h2>
-            <p>Key incidents stay visible as large browse cards for quick attention shifts.</p>
-          </div>
-        </div>
-
-        <div className="rail rail--wide">
-          {urgentTickets.map((ticket) => (
-            <TicketCard key={ticket.id} ticket={ticket} compact />
-          ))}
-        </div>
-      </section>
     </div>
   )
 }

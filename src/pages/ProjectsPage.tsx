@@ -285,7 +285,6 @@ export default function ProjectsPage() {
                 aria-label={`${p.title}: ${p.status}, ${p.progress}% progress`}
                 aria-pressed={isFocused}
                 className={`ctv-client-card${isFocused ? ' ctv-client-card--focused' : ''}`}
-                style={{ width: 240 }}
                 onFocus={() => selectProject(p.id)}
                 onMouseEnter={() => selectProject(p.id)}
                 onKeyDown={e => {
